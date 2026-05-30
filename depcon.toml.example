@@ -1,0 +1,26 @@
+[service]
+compose_file = "examples/fastapi-service/docker-compose.yml"
+health_endpoint = "http://localhost:8080/health"
+startup_timeout_secs = 15
+run_endpoint = "http://localhost:8080/run"
+
+[smoke]
+cases = [
+  { name = "happy_path",    body = '{"input": "hello"}',  expect_status = 200 },
+  { name = "empty_input",   body = '{"input": ""}',       expect_status = 400 },
+  { name = "large_payload", body = '{"input": "x"}',      expect_status = 200 },
+]
+request_timeout_secs = 10
+
+[dynatrace]
+service_name = "depcon-target"
+error_rate_threshold = 0.05
+latency_p99_threshold_ms = 500
+
+[agent]
+max_iterations = 5
+model = "gemini-2.0-flash"
+
+[output]
+save_sessions = true
+sessions_dir = ".depcon/sessions"

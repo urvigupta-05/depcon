@@ -1,0 +1,8 @@
+- id: depcon
+  name: Depcon — runtime health check
+  description: Spins up service, smoke tests it, diagnoses failures via Dynatrace + ADK
+  entry: depcon run
+  language: python
+  pass_filenames: false
+  always_run: false
+  stages: [pre-commit]
