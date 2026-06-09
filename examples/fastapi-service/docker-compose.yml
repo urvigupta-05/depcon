@@ -4,8 +4,6 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - DT_OTLP_ENDPOINT=${DT_OTLP_ENDPOINT}
-      - DT_API_TOKEN=${DT_API_TOKEN}
       - CHAOS_MODE=${CHAOS_MODE:-off}
     env_file:
       - ../../.env

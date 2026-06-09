@@ -2,7 +2,7 @@
 
 ## Critical Path (must ship)
 
-- [ ] **Repo + env setup** — public GitHub repo, MIT license at root, `pyproject.toml` with deps (`typer`, `textual`, `httpx`, `python-dotenv`, `google-adk`, `mcp`, `pydantic`), `uv.lock` committed, `.env.example`, `.gitignore`. Install uv (`curl -LsSf https://astral.sh/uv/install.sh | sh`), then `uv sync` to get a working env. Everyone gets Dynatrace free trial credentials + Gemini API key before touching code. Run everything via `uv run depcon <cmd>` or activate with `source .venv/bin/activate`.
+- [x] **Repo + env setup** — public GitHub repo, MIT license at root, `pyproject.toml` with deps (`typer`, `textual`, `httpx`, `python-dotenv`, `google-adk`, `mcp`, `pydantic`), `uv.lock` committed, `.env.example`, `.gitignore`. Install uv (`curl -LsSf https://astral.sh/uv/install.sh | sh`), then `uv sync` to get a working env. Everyone gets Dynatrace free trial credentials + Gemini API key before touching code. Run everything via `uv run depcon <cmd>` or activate with `source .venv/bin/activate`.
 
 - [ ] **FastAPI target service** (`examples/fastapi-service/`) — `GET /health`, `POST /run` with basic input validation. OTel instrumented (`opentelemetry-sdk`, `otel.service.name=depcon-target`, one span per request with status + latency + error bool, logs via OTel logging handler), OTLP exporting to Dynatrace. `CHAOS_MODE` env var: `off|latency|error|panic`. `Dockerfile` + `docker-compose.yml`. Verify traces + error spans appear in Dynatrace tenant before moving on.
 

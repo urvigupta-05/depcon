@@ -5,9 +5,10 @@ WORKDIR /app
 RUN pip install uv
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen
+RUN uv sync --frozen --no-install-project
 
 COPY main.py .
+RUN uv sync --frozen
 
 EXPOSE 8080
 

@@ -17,8 +17,6 @@ dependencies = [
     "python-dotenv>=1.0.0",
 ]
 
-[project.scripts]
-serve = "main:start"
 
 [tool.hatch.build.targets.wheel]
 sources = ["."]

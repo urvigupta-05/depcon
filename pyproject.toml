@@ -21,6 +21,7 @@ dependencies = [
 
 [project.scripts]
 depcon = "depcon.cli:app"
+depcon-hook = "depcon.hook:main"
 
 [dependency-groups]
 dev = [
