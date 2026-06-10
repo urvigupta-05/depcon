@@ -7,7 +7,6 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, StreamingResponse
-from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -75,6 +74,7 @@ async def _run_validation(chaos: str):
 
     if smoke.all_passed:
         yield _event("all_passed", {"message": "All tests passed. This commit is clear to proceed."})
+        yield _event("done", {})
         return
 
     # Step 2 — agent
@@ -88,6 +88,7 @@ async def _run_validation(chaos: str):
 
     if diagnosis is None:
         yield _event("agent_failed", {"message": "Agent returned no result. This may be a quota or connectivity issue."})
+        yield _event("done", {})
         return
 
     # Send evidence
@@ -111,7 +112,7 @@ async def _run_validation(chaos: str):
     except Exception:
         pass
 
-    # Send diagnosis
+    # Send diagnosis then signal stream end
     yield _event("diagnosis", {
         "hypothesis": diagnosis.hypothesis,
         "confidence": diagnosis.confidence,
@@ -125,6 +126,7 @@ async def _run_validation(chaos: str):
             for e in diagnosis.evidence
         ],
     })
+    yield _event("done", {})
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -146,7 +148,6 @@ async def run_stream(chaos: str = ""):
 @app.post("/api/fix")
 async def apply_fix_route():
     from depcon.fix import load_last_diagnosis, apply_fix
-    from depcon.config import load_config
     try:
         config = load_config()
         sessions_dir = config.output.sessions_dir

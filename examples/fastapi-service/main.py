@@ -18,36 +18,41 @@ from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 import logging
 
 
+logging.basicConfig(level=logging.WARNING)
+logger = logging.getLogger(__name__)
+
 load_dotenv()
 
-CHAOS_MODE=os.getenv("CHAOS_MODE","off")
-request_count=0
+CHAOS_MODE = os.getenv("CHAOS_MODE", "off")
+request_count = 0
 
 resource = Resource.create({
     "service.name": "depcon-target",
-    "service.version": "0.1.0"
+    "service.version": "0.1.0",
 })
 
+dt_endpoint = os.getenv("DT_OTLP_ENDPOINT", "")
+dt_token = os.getenv("DT_API_TOKEN", "")
 
-exporter = OTLPSpanExporter(
-    endpoint=os.getenv("DT_OTLP_ENDPOINT") + "/v1/traces",
-    headers={"Authorization": "Api-Token " + os.getenv("DT_API_TOKEN")}
-)
+if dt_endpoint and dt_token:
+    exporter = OTLPSpanExporter(
+        endpoint=dt_endpoint + "/v1/traces",
+        headers={"Authorization": "Api-Token " + dt_token},
+    )
+    provider = TracerProvider(resource=resource)
+    provider.add_span_processor(BatchSpanProcessor(exporter))
+    trace.set_tracer_provider(provider)
 
-provider = TracerProvider(resource=resource)
-provider.add_span_processor(BatchSpanProcessor(exporter))
-trace.set_tracer_provider(provider)
-log_exporter = OTLPLogExporter(
-    endpoint=os.getenv("DT_OTLP_ENDPOINT") + "/v1/logs",
-    headers={"Authorization": "Api-Token " + os.getenv("DT_API_TOKEN")}
-)
-log_provider = LoggerProvider(resource=resource)
-set_logger_provider(log_provider)
-log_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
-
-handler = LoggingHandler(logger_provider=log_provider)
-logging.getLogger().addHandler(handler)
-logger = logging.getLogger(__name__)
+    log_exporter = OTLPLogExporter(
+        endpoint=dt_endpoint + "/v1/logs",
+        headers={"Authorization": "Api-Token " + dt_token},
+    )
+    log_provider = LoggerProvider(resource=resource)
+    set_logger_provider(log_provider)
+    log_provider.add_log_record_processor(BatchLogRecordProcessor(log_exporter))
+    logging.getLogger().addHandler(LoggingHandler(logger_provider=log_provider))
+else:
+    logger.warning("DT_OTLP_ENDPOINT or DT_API_TOKEN not set — telemetry disabled")
 
 
 app=FastAPI()

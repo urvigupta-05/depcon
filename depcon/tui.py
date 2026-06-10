@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from textual import work
 from textual.app import App, ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal
 from textual.message import Message
-from textual.widgets import Footer, Header, RichLog, Static, Rule
+from textual.widgets import Footer, Header, RichLog, Static
 
 from depcon.config import DepconConfig
 from depcon.fix import apply_fix, save_session
