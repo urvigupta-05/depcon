@@ -106,8 +106,9 @@ def _print_blocked(diagnosis, session_path: Path) -> None:
 
 @app.command()
 def run(
-    watch: bool = typer.Option(False, "--watch", help="Show live TUI (not yet implemented)"),
-    chaos: str = typer.Option("", "--chaos", help="Override CHAOS_MODE (off|latency|error|panic)"),
+    watch: bool = typer.Option(False, "--watch", help="Show live TUI"),
+    web: bool = typer.Option(False, "--web", help="Open browser dashboard"),
+    chaos: str = typer.Option("", "--chaos", help="Override CHAOS_MODE"),
 ) -> None:
     """Full validation cycle — what pre-commit calls."""
     load_dotenv()
@@ -128,6 +129,21 @@ def run(
         raise typer.Exit(0)  # fail open — no config means not set up yet
 
     staged_diff = _get_staged_diff()
+    if watch:
+        from depcon.tui import DepconApp
+        DepconApp(config=config, chaos=chaos, staged_diff=staged_diff).run()
+        raise typer.Exit(0)
+    if web:
+        import uvicorn
+        import webbrowser
+        import threading
+        def _open():
+            import time
+            time.sleep(1.5)
+            webbrowser.open("http://localhost:8765")
+        threading.Thread(target=_open, daemon=True).start()
+        uvicorn.run("depcon.web:app", host="0.0.0.0", port=8765, reload=False)
+        raise typer.Exit(0)
     timeout = int(os.getenv("DEPCON_TIMEOUT", "120"))
     threshold = os.getenv("DEPCON_CONFIDENCE_THRESHOLD", "medium")
 
