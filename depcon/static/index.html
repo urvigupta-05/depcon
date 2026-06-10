@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Depcon — Pre-commit Validation</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #0f1117;
+    color: #e2e8f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background: #1a1d2e;
+    border-bottom: 1px solid #2d3148;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #a78bfa;
+    letter-spacing: 0.5px;
+  }
+
+  header span {
+    font-size: 13px;
+    color: #64748b;
+  }
+
+  .controls {
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid #1e2235;
+  }
+
+  .controls label {
+    font-size: 13px;
+    color: #94a3b8;
+  }
+
+  select {
+    background: #1e2235;
+    border: 1px solid #2d3148;
+    color: #e2e8f0;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  button {
+    padding: 9px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.15s;
+  }
+
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  #btn-run {
+    background: #7c3aed;
+    color: white;
+  }
+
+  #btn-run:hover:not(:disabled) { background: #6d28d9; }
+
+  #btn-fix {
+    background: #065f46;
+    color: #6ee7b7;
+    display: none;
+  }
+
+  #btn-fix:hover:not(:disabled) { background: #047857; }
+
+  .panels {
+    display: grid;
+    grid-template-columns: 1fr 2fr 2fr;
+    gap: 16px;
+    padding: 16px 32px 32px;
+    flex: 1;
+  }
+
+  .panel {
+    background: #1a1d2e;
+    border: 1px solid #2d3148;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    min-height: 500px;
+  }
+
+  .panel-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid #2d3148;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #7c3aed;
+  }
+
+  .panel-body {
+    padding: 16px 18px;
+    flex: 1;
+    overflow-y: auto;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .placeholder {
+    color: #475569;
+    font-style: italic;
+  }
+
+  /* Service panel */
+  .test-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #1e2235;
+  }
+
+  .test-row:last-child { border-bottom: none; }
+
+  .badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+
+  .badge-pass { background: #064e3b; color: #6ee7b7; }
+  .badge-fail { background: #450a0a; color: #fca5a5; }
+
+  .test-name { font-weight: 500; color: #e2e8f0; }
+  .test-meta { font-size: 12px; color: #64748b; margin-top: 2px; }
+
+  .summary-row {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .summary-pass { background: #064e3b; color: #6ee7b7; }
+  .summary-fail { background: #450a0a; color: #fca5a5; }
+
+  /* Agent panel */
+  .evidence-item {
+    padding: 10px 0;
+    border-bottom: 1px solid #1e2235;
+  }
+
+  .evidence-item:last-child { border-bottom: none; }
+
+  .evidence-step {
+    font-size: 11px;
+    color: #7c3aed;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .evidence-finding { color: #cbd5e1; }
+
+  .evidence-snippet {
+    margin-top: 6px;
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 11px;
+    color: #64748b;
+    background: #0f1117;
+    padding: 6px 10px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+  }
+
+  /* Diagnosis panel */
+  .confidence-banner {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .confidence-high { background: #450a0a; color: #fca5a5; }
+  .confidence-medium { background: #451a03; color: #fcd34d; }
+  .confidence-low { background: #0c1a2e; color: #67e8f9; }
+
+  .confidence-sub {
+    font-size: 12px;
+    font-weight: 400;
+    margin-top: 4px;
+    opacity: 0.8;
+  }
+
+  .section-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: #64748b;
+    margin: 16px 0 8px;
+  }
+
+  .detail-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+
+  .detail-label { color: #64748b; min-width: 90px; }
+  .detail-value { color: #e2e8f0; }
+
+  .diff-block {
+    font-family: "SF Mono", "Fira Code", monospace;
+    font-size: 12px;
+    background: #0f1117;
+    border-radius: 6px;
+    padding: 12px;
+    margin-top: 8px;
+    overflow-x: auto;
+  }
+
+  .diff-add { color: #6ee7b7; }
+  .diff-remove { color: #fca5a5; }
+  .diff-meta { color: #67e8f9; }
+  .diff-dim { color: #475569; }
+
+  .status-msg {
+    color: #94a3b8;
+    font-style: italic;
+    padding: 4px 0;
+  }
+
+  .success-banner {
+    padding: 16px;
+    background: #064e3b;
+    color: #6ee7b7;
+    border-radius: 6px;
+    font-weight: 500;
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  .error-banner {
+    padding: 16px;
+    background: #450a0a;
+    color: #fca5a5;
+    border-radius: 6px;
+    font-size: 13px;
+    margin-top: 8px;
+  }
+
+  .notify {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #1e2235;
+    border: 1px solid #2d3148;
+    border-radius: 8px;
+    padding: 12px 18px;
+    font-size: 13px;
+    color: #e2e8f0;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.2s;
+    pointer-events: none;
+    max-width: 320px;
+  }
+
+  .notify.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⬡ Depcon</h1>
+  <span>Pre-commit Service Validation</span>
+</header>
+
+<div class="controls">
+  <label>Fault mode:</label>
+  <select id="chaos">
+    <option value="">Off</option>
+    <option value="error">Error (50% failures)</option>
+    <option value="panic">Panic (crash after 3rd request)</option>
+    <option value="latency">Latency (800ms delay)</option>
+  </select>
+  <button id="btn-run" onclick="startRun()">▶ Run Validation</button>
+  <button id="btn-fix" onclick="applyFix()">⚡ Apply Fix</button>
+</div>
+
+<div class="panels">
+  <div class="panel">
+    <div class="panel-header">Service Status</div>
+    <div class="panel-body" id="panel-service">
+      <p class="placeholder">Run validation to see service and test results.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">Agent Activity</div>
+    <div class="panel-body" id="panel-agent">
+      <p class="placeholder">Agent will run if any tests fail.</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">Result &amp; Recommended Action</div>
+    <div class="panel-body" id="panel-diagnosis">
+      <p class="placeholder">Diagnosis will appear here once the agent completes its analysis.</p>
+    </div>
+  </div>
+</div>
+
+<div class="notify" id="notify"></div>
+
+<script>
+let evtSource = null;
+
+function notify(msg, duration = 4000) {
+  const el = document.getElementById('notify');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+function startRun() {
+  if (evtSource) evtSource.close();
+
+  document.getElementById('panel-service').innerHTML = '<p class="status-msg">Starting service...</p>';
+  document.getElementById('panel-agent').innerHTML = '<p class="status-msg">Waiting for test results...</p>';
+  document.getElementById('panel-diagnosis').innerHTML = '<p class="placeholder">Diagnosis will appear here once the agent completes its analysis.</p>';
+  document.getElementById('btn-run').disabled = true;
+  document.getElementById('btn-fix').style.display = 'none';
+
+  const chaos = document.getElementById('chaos').value;
+  evtSource = new EventSource(`/api/run?chaos=${chaos}`);
+
+  evtSource.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    handleEvent(data);
+  };
+
+  evtSource.onerror = function() {
+    evtSource.close();
+    document.getElementById('btn-run').disabled = false;
+  };
+}
+
+function handleEvent(data) {
+  const serviceEl = document.getElementById('panel-service');
+  const agentEl = document.getElementById('panel-agent');
+  const diagEl = document.getElementById('panel-diagnosis');
+
+  if (data.type === 'status') {
+    if (data.panel === 'service') {
+      serviceEl.innerHTML = `<p class="status-msg">${data.message}</p>`;
+    } else if (data.panel === 'agent') {
+      agentEl.innerHTML = `<p class="status-msg">${data.message}</p>`;
+    }
+  }
+
+  else if (data.type === 'smoke') {
+    let html = '';
+    if (data.total === 0) {
+      html = '<div class="error-banner">Service did not start or health check failed.</div>';
+    } else {
+      html += '<p style="color:#94a3b8;font-size:12px;margin-bottom:12px;">Service is healthy</p>';
+      data.cases.forEach(c => {
+        html += `
+          <div class="test-row">
+            <span class="badge ${c.passed ? 'badge-pass' : 'badge-fail'}">${c.passed ? 'PASS' : 'FAIL'}</span>
+            <div>
+              <div class="test-name">${c.name}</div>
+              <div class="test-meta">Response: ${c.status_code} &nbsp;·&nbsp; Expected: ${c.expected_status} &nbsp;·&nbsp; ${c.latency_ms}ms</div>
+              ${c.error ? `<div class="test-meta" style="color:#fca5a5">${c.error}</div>` : ''}
+            </div>
+          </div>`;
+      });
+      const cls = data.all_passed ? 'summary-pass' : 'summary-fail';
+      html += `<div class="summary-row ${cls}">${data.passed} passed &nbsp;·&nbsp; ${data.failed} failed</div>`;
+    }
+    serviceEl.innerHTML = html;
+  }
+
+  else if (data.type === 'all_passed') {
+    agentEl.innerHTML = '<p style="color:#6ee7b7">No issues found — agent analysis was not needed.</p>';
+   diagEl.innerHTML = '<div class="success-banner">✓ All tests passed. This commit is clear to proceed.<br><br><span style="font-size:12px;opacity:0.8">All smoke test cases returned the expected status codes. No further analysis was needed.</span></div>';
+    document.getElementById('btn-run').disabled = false;
+    evtSource.close();
+  }
+
+  else if (data.type === 'evidence') {
+    if (agentEl.querySelector('.status-msg')) agentEl.innerHTML = '';
+    agentEl.innerHTML += `
+      <div class="evidence-item">
+        <div class="evidence-step">Step ${data.step} &nbsp;·&nbsp; ${data.tool}</div>
+        <div class="evidence-finding">${data.finding}</div>
+        ${data.snippet ? `<div class="evidence-snippet">${data.snippet.split('\n').slice(0,3).join('\n')}</div>` : ''}
+      </div>`;
+    agentEl.scrollTop = agentEl.scrollHeight;
+  }
+
+  else if (data.type === 'diagnosis') {
+    const confidenceLabel = {
+      high: 'HIGH — Commit blocked. A fix is available below.',
+      medium: 'MEDIUM — Review recommended before proceeding.',
+      low: 'LOW — Minor issue detected. Proceed with caution.',
+    };
+
+    let html = `<div class="confidence-banner confidence-${data.confidence}">
+      ${data.confidence.toUpperCase()} CONFIDENCE
+      <div class="confidence-sub">${confidenceLabel[data.confidence] || ''}</div>
+    </div>`;
+
+    html += `<div class="section-title">Root Cause</div>`;
+    html += `<p style="color:#e2e8f0;margin-bottom:8px">${data.hypothesis}</p>`;
+
+    html += `<div class="section-title">Details</div>`;
+    html += `<div class="detail-row"><span class="detail-label">Error type</span><span class="detail-value">${data.error_class}</span></div>`;
+    if (data.affected_file) {
+      const loc = data.affected_function ? `${data.affected_file} → ${data.affected_function}()` : data.affected_file;
+      html += `<div class="detail-row"><span class="detail-label">Location</span><span class="detail-value">${loc}</span></div>`;
+    }
+
+    html += `<div class="section-title">Recommended Fix</div>`;
+    html += `<p style="color:#cbd5e1">${data.fix_description}</p>`;
+
+    if (data.fix_diff) {
+      html += `<div class="section-title">Code Changes</div>`;
+      html += `<p style="font-size:12px;color:#64748b;margin-bottom:8px">Click "Apply Fix" above to apply these changes automatically.</p>`;
+      html += `<div class="diff-block">`;
+      data.fix_diff.split('\n').forEach(line => {
+        if (line.startsWith('+++') || line.startsWith('---')) {
+          html += `<div class="diff-dim">${escHtml(line)}</div>`;
+        } else if (line.startsWith('+')) {
+          html += `<div class="diff-add">${escHtml(line)}</div>`;
+        } else if (line.startsWith('-')) {
+          html += `<div class="diff-remove">${escHtml(line)}</div>`;
+        } else if (line.startsWith('@@')) {
+          html += `<div class="diff-meta">${escHtml(line)}</div>`;
+        } else {
+          html += `<div class="diff-dim">${escHtml(line)}</div>`;
+        }
+      });
+      html += `</div>`;
+      document.getElementById('btn-fix').style.display = 'inline-block';
+    }
+
+    diagEl.innerHTML = html;
+    document.getElementById('btn-run').disabled = false;
+    evtSource.close();
+  }
+
+  else if (data.type === 'agent_failed') {
+    agentEl.innerHTML += `<div class="error-banner">Agent stopped: ${data.message}</div>`;
+    diagEl.innerHTML = `<div class="error-banner">
+      <strong>Agent could not complete analysis.</strong><br><br>
+      ${data.message}<br><br>
+      Your commit has been allowed through. Depcon only blocks commits when it is fully confident about the root cause — if the agent cannot complete its analysis, it steps aside rather than risk blocking your work unnecessarily.
+    </div>`;
+    document.getElementById('btn-run').disabled = false;
+    evtSource.close();
+  }
+
+  else if (data.type === 'error') {
+    serviceEl.innerHTML = `<div class="error-banner">${data.message}</div>`;
+    document.getElementById('btn-run').disabled = false;
+    evtSource.close();
+  }
+}
+
+async function applyFix() {
+  const btn = document.getElementById('btn-fix');
+  btn.disabled = true;
+  btn.textContent = 'Applying...';
+  try {
+    const res = await fetch('/api/fix', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      notify(`✓ Fix applied to: ${data.files.join(', ')}`);
+      btn.textContent = '✓ Fix Applied';
+    } else {
+      notify(`✗ Could not apply fix: ${data.error}`);
+      btn.disabled = false;
+      btn.textContent = '⚡ Apply Fix';
+    }
+  } catch (e) {
+    notify('Request failed');
+    btn.disabled = false;
+    btn.textContent = '⚡ Apply Fix';
+  }
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
