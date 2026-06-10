@@ -16,7 +16,6 @@ from opentelemetry._logs import set_logger_provider
 from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
 from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
 import logging
-logging.basicConfig(level=logging.DEBUG)
 
 
 load_dotenv()

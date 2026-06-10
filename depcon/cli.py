@@ -128,6 +128,10 @@ def run(
         raise typer.Exit(0)  # fail open — no config means not set up yet
 
     staged_diff = _get_staged_diff()
+    if watch:
+        from depcon.tui import DepconApp
+        DepconApp(config=config, chaos=chaos, staged_diff=staged_diff).run()
+        raise typer.Exit(0)
     timeout = int(os.getenv("DEPCON_TIMEOUT", "120"))
     threshold = os.getenv("DEPCON_CONFIDENCE_THRESHOLD", "medium")
 
